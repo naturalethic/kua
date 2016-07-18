@@ -1,15 +1,18 @@
+/* eslint-disable no-underscore-dangle */
+
 import * as childProcess from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as babel from 'babel-core'
 import * as optimist from 'optimist'
 import * as chokidar from 'chokidar'
 import * as glob from 'glob'
 import * as Promise from 'bluebird'
 import * as co from 'co'
 import * as uuid from 'uuid'
-import * as Module from 'module'
 import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
+import Module from 'module'
 import extend from 'deep-extend'
 import inflectFactory from 'i'
 
@@ -17,88 +20,123 @@ const inflect = inflectFactory()
 
 // daemon-action = null
 
-export function init(root) {
-  const kua = {
-    config: {
-      color: true,
-    },
-    root: fs.realpathSync(root || optimist.argv.root || process.cwd()),
-    option: {},
-    pathify: it => Module.globalPaths.push(it),
-    exec: it => childProcess.execSync(it).toString(),
-    spawn: (command, options = {}) => {
-      const resolvedOptions = Object.assign({}, options)
-      resolvedOptions.stdio = options.stdio || 'inherit'
-      return new Promise((resolve) => {
-        const [head, ...tail] = command.match(/[^"'\s]+|"[^"]+"|'[^'']+'/g)
-        return childProcess.spawn(head, tail, resolvedOptions).on('close', resolve)
-      })
-    },
-    color: (c, v) => (kua.config.color && `\x1b[38;5;${c}m${v}\x1b[0m`) || v,
-    glob: glob.sync,
-    uuid,
-  }
-  for (const key of Object.keys(optimist.argv)) {
-    kua.option[inflect.camelize(key, false)] = optimist.argv[key]
-  }
-  const log = kua.option.daemon && fs.openSync('kua.log', 'a+')
-  for (const level of ['log', 'info', 'warn', 'error']) {
-    if (log) {
-      kua[level] = (...rest) => {
-        fs.write(log, rest.join(' '))
-        fs.write(log, '\n')
+export class Kua {
+  constructor(root) {
+    this.config = { color: true }
+    this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
+    this.option = {}
+    this.glob = glob.sync
+    this.task = optimist.argv._[0]
+    this.subtask = optimist.argv._[1]
+    this.uuid = uuid
+    for (const key of Object.keys(optimist.argv)) {
+      this.option[inflect.camelize(key, false)] = optimist.argv[key]
+    }
+    const log = this.option.daemon && fs.openSync('kua.log', 'a+')
+    for (const level of ['log', 'info', 'warn', 'error']) {
+      if (log) {
+        this[level] = (...rest) => {
+          fs.write(log, rest.join(' '))
+          fs.write(log, '\n')
+        }
+      } else {
+        this[level] = (...rest) => console[level](...rest)
       }
-    } else {
-      kua[level] = (...rest) => console[level](...rest)
+    }
+    if (fs.existsSync(`${this.root}/config.yml`)) {
+      extend(this.config, yaml.load(fs.readFileSync(`${this.root}/config.yml`, 'utf8')))
+    }
+    if (fs.existsSync(`${this.root}/host.yml`)) {
+      extend(this.config, yaml.load(fs.readFileSync(`${this.root}/host.yml`, 'utf8')))
+    }
+    this.addNodePath(`${this.root}/lib`)
+  }
+
+  addNodePath(nodePath) {
+    Module.globalPaths.push(nodePath)
+  }
+
+  exec(command) {
+    return childProcess.execSync(command).toString()
+  }
+
+  spawn(command, options = {}) {
+    const resolvedOptions = Object.assign({}, options)
+    resolvedOptions.stdio = options.stdio || 'inherit'
+    return new Promise((resolve) => {
+      const [head, ...tail] = command.match(/[^"'\s]+|"[^"]+"|'[^'']+'/g)
+      return childProcess.spawn(head, tail, resolvedOptions).on('close', resolve)
+    })
+  }
+
+  color(xterm256Color, text) {
+    return (this.config.color && `\x1b[38;5;${xterm256Color}m${text}\x1b[0m`) || text
+  }
+
+  loadModule(modulePath) {
+    const originalDir = process.cwd()
+    process.chdir(`${__dirname}/..`)
+    const module = new Module()
+    module.paths = [`${this.root}/node_modules`, `${this.root}/lib`]
+    module._compile(babel.transform(fs.readFileSync(modulePath, 'utf8'), {
+      presets: ['es2015'],
+    }).code, modulePath)
+    process.chdir(originalDir)
+    return module.exports
+  }
+
+  logUsage() {
+
+  }
+
+  locateTask() {
+    const primaryTaskNames = this.glob('task/*.js').map(it => path.basename(it, '.js'))
+    console.log(primaryTaskNames)
+    let task;
+    if (this.task) {
+      if (primaryTaskNames.includes(this.task)) {
+        console.log(`${this.root}/task/${this.task}.js`)
+        const taskModule = this.loadModule(`${this.root}/task/${this.task}.js`)
+        console.log(taskModule)
+        if (this.subtask) {
+          // secondaryTaskNames =
+        }
+      }
     }
   }
-  // kua.pathify(kua.root)
-  kua.pathify(`${kua.root}/lib`)
-  if (fs.existsSync(`${root}/config.yml`)) {
-    extend(kua.config, yaml.load(fs.readFileSync(`${root}/config.yml`, 'utf8')))
+
+  run() {
+    process.chdir(this.root)
+    const task = this.locateTask()
   }
-  if (fs.existsSync(`${root}/host.yml`)) {
-    extend(kua.config, yaml.load(fs.readFileSync(`${root}/host.yml`, 'utf8')))
-  }
-  extend(this, kua)
-  return this
 }
 
-//   if mix.task.0 in <[ start stop ]>
-//     daemon-action := mix.task.shift!
 
-//   global.debounce = ->
-//     return if &.length < 1
-//     wait = 1
-//     if is-type \Function &0
-//       func = &0
-//     else
-//       wait = &0
-//     if &.length > 1
-//       if is-type \Function &1
-//         func = &1
-//       else
-//         wait = &1
-//     timeout = null
-//     ->
-//       args = arguments
-//       clear-timeout timeout
-//       timeout := set-timeout (~>
-//         timeout := null
-//         func.apply this, args
-//       ), wait
-//   this <<< mix
-//   this
+// //   if mix.task.0 in <[ start stop ]>
+// //     daemon-action := mix.task.shift!
 
-// # -----------------------------------------------------------------------------
-// # End global assignments.
-// # -----------------------------------------------------------------------------
-
-// array-replace = (it, a, b) -> index = it.index-of(a); it.splice(index, 1, b) if index > -1; it
-
-export function run() {
-  process.chdir(this.root)
-}
+// //   global.debounce = ->
+// //     return if &.length < 1
+// //     wait = 1
+// //     if is-type \Function &0
+// //       func = &0
+// //     else
+// //       wait = &0
+// //     if &.length > 1
+// //       if is-type \Function &1
+// //         func = &1
+// //       else
+// //         wait = &1
+// //     timeout = null
+// //     ->
+// //       args = arguments
+// //       clear-timeout timeout
+// //       timeout := set-timeout (~>
+// //         timeout := null
+// //         func.apply this, args
+// //       ), wait
+// //   this <<< mix
+// //   this
 
 // export run = ->
 //   # Load plugin and project tasks.  Project tasks will mask plugins of the same name.
