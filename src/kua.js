@@ -18,21 +18,22 @@ import inflectFactory from 'i'
 
 const inflect = inflectFactory()
 
-// daemon-action = null
-
-export class Kua {
-  constructor(root) {
+class Kua {
+  initialize(root) {
+    if (['start', 'stop'].includes(optimist.argv._[0])) {
+      this.daemonize = optimist.argv._.shift()
+    }
     this.config = { color: true }
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
     this.option = {}
     this.glob = glob.sync
-    this.task = optimist.argv._[0]
-    this.subtask = optimist.argv._[1]
+    this.task = inflect.camelize(optimist.argv._[0] || '', false)
+    this.subtask = inflect.camelize(optimist.argv._[1] || optimist.argv._[0] || '', false)
     this.uuid = uuid
     for (const key of Object.keys(optimist.argv)) {
       this.option[inflect.camelize(key, false)] = optimist.argv[key]
     }
-    const log = this.option.daemon && fs.openSync('kua.log', 'a+')
+    const log = this.option.logfile && fs.openSync(this.option.logfile, 'a+')
     for (const level of ['log', 'info', 'warn', 'error']) {
       if (log) {
         this[level] = (...rest) => {
@@ -85,29 +86,23 @@ export class Kua {
     return module.exports
   }
 
-  logUsage() {
-
-  }
-
-  locateTask() {
-    const primaryTaskNames = this.glob('task/*.js').map(it => path.basename(it, '.js'))
-    console.log(primaryTaskNames)
-    let task;
-    if (this.task) {
-      if (primaryTaskNames.includes(this.task)) {
-        console.log(`${this.root}/task/${this.task}.js`)
-        const taskModule = this.loadModule(`${this.root}/task/${this.task}.js`)
-        console.log(taskModule)
-        if (this.subtask) {
-          // secondaryTaskNames =
-        }
-      }
-    }
-  }
-
-  run() {
+  run(root) {
+    this.initialize(root)
     process.chdir(this.root)
-    const task = this.locateTask()
+    const task = this.loadModule(`${this.root}/task/${this.task}.js`)[this.subtask]
+    if (this.daemonize) {
+      const daemon = daemonize.setup({
+        main: optimist.argv.$0,
+        pidfile: `/tmp/kua-${path.basename(this.root)}-${this.task}-${this.subtask}.pid`,
+        name: ['kua'].concat(optimist.argv._).join(' '),
+        argv: optimist.argv._.concat(['--logfile', 'kua.log']),
+        cwd: this.root,
+      })
+      daemon.on('error', (e) => this.error(e))
+      daemon[this.daemonize]()
+      process.exit()
+    }
+    task()
   }
 }
 
@@ -138,51 +133,8 @@ export class Kua {
 // //   this <<< mix
 // //   this
 
-// export run = ->
-//   # Load plugin and project tasks.  Project tasks will mask plugins of the same name.
-//   task-modules = pairs-to-obj (((glob.sync "#{project-root}/node_modules/mix*/task/*") ++ glob.sync("#{project-root}/task/*")) |> map ->
-//     [ (camelize fs.path.basename(it).replace //#{fs.path.extname it}$//, ''), it ]
-//   )
-
 //   if (process.argv.index-of '--daemon') >= 0
 //     mix.task.shift!
-
-//   # Print list of tasks if none given, or task does not exist.
-//   if !mix.task.0 or !task-modules[camelize mix.task.0]
-//     if !(keys task-modules).length
-//       info 'No tasks defined'
-//       process.exit!
-//     info 'Tasks:'
-//     keys task-modules |> each -> info "  #it"
-//     process.exit!
-
-//   task-module = new Module.Module
-//   task-module.paths = [ "#{project-root}/node_modules", "#{project-root}/lib", "#__dirname/../lib" ]
-//   task-module.paths.push "#__dirname/../node_modules" if fs.exists-sync "#__dirname/../node_modules"
-//   task-module._compile (livescript.compile ([
-//     (fs.read-file-sync task-modules[camelize mix.task.0] .to-string!)
-//   ].join '\n'), { +bare }), task-modules[camelize mix.task.0]
-//   task-module = task-module.exports
-
-//   # Print list of subtasks if one is acceptable and none given, or subtask does not exist.
-//   if !(mix.task.1 and task = task-module[camelize mix.task.1.to-string!]) and !(task = task-module[camelize mix.task.0])
-//     info 'Subtasks:'
-//     keys task-module
-//     |> filter -> it != camelize mix.task.0
-//     |> each -> info "  #{dasherize it}"
-//     process.exit!
-
-//   if daemon-action
-//     daemon = daemonize2.setup do
-//       main:    "#__dirname/../run.js"
-//       name:    "MIX: #{project-root} [#{mix.task.0}]"
-//       pidfile: "/tmp/mix-#{fs.path.basename project-root}-#{mix.task.0}.pid"
-//       argv:    process.argv.slice(2) ++ [ '--daemon' ]
-//       cwd:     project-root
-//     daemon.on \error, ->
-//       info ...&
-//     daemon[daemon-action]!
-//     process.exit!
 
 //   # Provide watch capability to all tasks.
 //   if mix.option.watch and task-module.watch
@@ -203,3 +155,5 @@ export class Kua {
 //   co task ...(mix.task.1 and mix.task[((task-module[camelize mix.task.1.to-string!] and 2) or 1) til mix.task.length] or [])
 //   .catch ->
 //     error (it.stack or it)
+
+export default new Kua()

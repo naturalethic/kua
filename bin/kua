@@ -1,4 +1,2 @@
 #!/usr/bin/env node
-const kua = require('../lib/kua')
-new kua.Kua().run()
-
+require('../../kua').run()

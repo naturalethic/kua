@@ -1,1 +1,1 @@
-module.exports = require('./lib/kua')
+module.exports = require('./lib/kua').default
