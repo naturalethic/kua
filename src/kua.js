@@ -1,5 +1,3 @@
-/* eslint-disable no-underscore-dangle */
-
 import * as childProcess from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -7,11 +5,10 @@ import * as babel from 'babel-core'
 import * as optimist from 'optimist'
 import * as chokidar from 'chokidar'
 import * as glob from 'glob'
-import * as Promise from 'bluebird'
-import * as co from 'co'
 import * as uuid from 'uuid'
 import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
+import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
 import inflectFactory from 'i'
@@ -21,7 +18,7 @@ const inflect = inflectFactory()
 class Kua {
   initialize(root) {
     if (['start', 'stop'].includes(optimist.argv._[0])) {
-      this.daemonize = optimist.argv._.shift()
+      this.daemonizeAction = optimist.argv._.shift()
     }
     this.config = { color: true }
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
@@ -33,16 +30,14 @@ class Kua {
     for (const key of Object.keys(optimist.argv)) {
       this.option[inflect.camelize(key, false)] = optimist.argv[key]
     }
-    const log = this.option.logfile && fs.openSync(this.option.logfile, 'a+')
-    for (const level of ['log', 'info', 'warn', 'error']) {
-      if (log) {
-        this[level] = (...rest) => {
-          fs.write(log, rest.join(' '))
-          fs.write(log, '\n')
-        }
-      } else {
-        this[level] = (...rest) => console[level](...rest)
-      }
+    if (this.option.logfile) {
+      const log = fs.createWriteStream(this.option.logfile, { flags: 'a+' })
+      process.stdout.write = process.stderr.write = log.write.bind(log)
+      process.on('uncaughtException', (error) => {
+        /* eslint-disable no-console */
+        console.error((error && error.stack) ? error.stack : error)
+        /* eslint-enable no-console */
+      })
     }
     if (fs.existsSync(`${this.root}/config.yml`)) {
       extend(this.config, yaml.load(fs.readFileSync(`${this.root}/config.yml`, 'utf8')))
@@ -61,12 +56,22 @@ class Kua {
     return childProcess.execSync(command).toString()
   }
 
-  spawn(command, options = {}) {
-    const resolvedOptions = Object.assign({}, options)
-    resolvedOptions.stdio = options.stdio || 'inherit'
-    return new Promise((resolve) => {
+  spawn(command) {
+    const [head, ...tail] = command.match(/[^"'\s]+|"[^"]+"|'[^'']+'/g)
+    return childProcess.spawnSync(head, tail, { stdio: 'inherit' })
+  }
+
+  spawnAsync(command) {
+    const [head, ...tail] = command.match(/[^"'\s]+|"[^"]+"|'[^'']+'/g)
+    return childProcess.spawn(head, tail, { stdio: 'inherit' })
+  }
+
+  spawnPromise(command) {
+    return new Promise((resolve, reject) => {
       const [head, ...tail] = command.match(/[^"'\s]+|"[^"]+"|'[^'']+'/g)
-      return childProcess.spawn(head, tail, resolvedOptions).on('close', resolve)
+      const child = childProcess.spawn(head, tail, { stdio: 'inherit' })
+      child.on('close', resolve)
+      child.on('error', reject)
     })
   }
 
@@ -79,81 +84,55 @@ class Kua {
     process.chdir(`${__dirname}/..`)
     const module = new Module()
     module.paths = [`${this.root}/node_modules`, `${this.root}/lib`]
+    /* eslint-disable no-underscore-dangle */
     module._compile(babel.transform(fs.readFileSync(modulePath, 'utf8'), {
+    /* eslint-enable no-underscore-dangle */
       presets: ['es2015'],
     }).code, modulePath)
     process.chdir(originalDir)
     return module.exports
   }
 
+  watch(watch) {
+    const command =
+      [optimist.argv.$0].concat(process.argv.slice(2)).join(' ').replace(' --watch', '')
+    this.child = this.spawnAsync(command)
+    chokidar.watch(watch || [], { persistent: true, ignoreInitial: true }).on('all', (_, p) => {
+      this.info(`Change detected in ${p}...`)
+      this.child.kill()
+      this.child = this.spawnAsync(command)
+    })
+    process.on('SIGTERM', () => {
+      this.child.kill()
+      process.exit()
+    })
+  }
+
+  daemonize() {
+    const daemon = daemonize.setup({
+      main: optimist.argv.$0,
+      pidfile: `/tmp/kua-${path.basename(this.root)}-${this.task}-${this.subtask}.pid`,
+      name: ['kua'].concat(optimist.argv._).join(' '),
+      argv: process.argv.slice(3).concat(['--logfile', 'kua.log']),
+      cwd: this.root,
+    })
+    daemon.on('error', (e) => this.error(e))
+    daemon[this.daemonizeAction]()
+  }
+
   run(root) {
     this.initialize(root)
     process.chdir(this.root)
-    const task = this.loadModule(`${this.root}/task/${this.task}.js`)[this.subtask]
-    if (this.daemonize) {
-      const daemon = daemonize.setup({
-        main: optimist.argv.$0,
-        pidfile: `/tmp/kua-${path.basename(this.root)}-${this.task}-${this.subtask}.pid`,
-        name: ['kua'].concat(optimist.argv._).join(' '),
-        argv: optimist.argv._.concat(['--logfile', 'kua.log']),
-        cwd: this.root,
-      })
-      daemon.on('error', (e) => this.error(e))
-      daemon[this.daemonize]()
-      process.exit()
+    const module = this.loadModule(`${this.root}/task/${this.task}.js`)
+    const task = module[this.subtask]
+    if (this.daemonizeAction) {
+      this.daemonize()
+    } else if (this.option.watch) {
+      this.watch(module.watch)
+    } else {
+      task()
     }
-    task()
   }
 }
-
-
-// //   if mix.task.0 in <[ start stop ]>
-// //     daemon-action := mix.task.shift!
-
-// //   global.debounce = ->
-// //     return if &.length < 1
-// //     wait = 1
-// //     if is-type \Function &0
-// //       func = &0
-// //     else
-// //       wait = &0
-// //     if &.length > 1
-// //       if is-type \Function &1
-// //         func = &1
-// //       else
-// //         wait = &1
-// //     timeout = null
-// //     ->
-// //       args = arguments
-// //       clear-timeout timeout
-// //       timeout := set-timeout (~>
-// //         timeout := null
-// //         func.apply this, args
-// //       ), wait
-// //   this <<< mix
-// //   this
-
-//   if (process.argv.index-of '--daemon') >= 0
-//     mix.task.shift!
-
-//   # Provide watch capability to all tasks.
-//   if mix.option.watch and task-module.watch
-//       process.argv.shift!
-//       process.argv.shift!
-//       argv = mix.task ++ process.argv
-//       array-replace argv, '--watch', '--supervised'
-//       while true
-//         child = process.spawn-sync fs.path.resolve('node_modules/.bin/mix'), argv, { stdio: 'inherit' }
-//         if child.error
-//           info child.error
-//           process.exit!
-//   else if mix.option.supervised
-//     watcher.watch (task-module.watch or []), persistent: true, ignore-initial: true .on 'all', (event, path) ->
-//       info "Change detected in '#path'..."
-//       process.exit!
-
-//   co task ...(mix.task.1 and mix.task[((task-module[camelize mix.task.1.to-string!] and 2) or 1) til mix.task.length] or [])
-//   .catch ->
-//     error (it.stack or it)
 
 export default new Kua()
