@@ -11,9 +11,10 @@ import * as yaml from 'js-yaml'
 import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
-import inflectFactory from 'i'
 
-const inflect = inflectFactory()
+function camelize(string) {
+  return string.trim().replace(/(\-|_|\s)+(.)?/g, (m, s, c) => (c ? c.toUpperCase() : ''))
+}
 
 class Kua {
   initialize(root) {
@@ -24,11 +25,11 @@ class Kua {
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
     this.option = {}
     this.glob = glob.sync
-    this.task = inflect.camelize(optimist.argv._[0] || '', false)
-    this.subtask = inflect.camelize(optimist.argv._[1] || optimist.argv._[0] || '', false)
+    this.task = camelize(optimist.argv._[0] || '')
+    this.subtask = camelize(optimist.argv._[1] || optimist.argv._[0] || '')
     this.uuid = uuid
     for (const key of Object.keys(optimist.argv)) {
-      this.option[inflect.camelize(key, false)] = optimist.argv[key]
+      this.option[camelize(key)] = optimist.argv[key]
     }
     if (this.option.logfile) {
       const log = fs.createWriteStream(this.option.logfile, { flags: 'a+' })

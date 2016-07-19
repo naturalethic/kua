@@ -1,6 +1,6 @@
 {
   "name": "kua",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -61,7 +61,6 @@
     "daemonize2": "^0.4.2",
     "deep-extend": "^0.4.1",
     "glob": "^7.0.5",
-    "i": "^0.3.5",
     "js-yaml": "^3.6.1",
     "optimist": "^0.6.1",
     "uuid": "^2.0.2"
