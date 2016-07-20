@@ -8,6 +8,7 @@ import * as glob from 'glob'
 import * as uuid from 'uuid'
 import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
+import * as fp from 'ramda'
 import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
@@ -25,6 +26,7 @@ class Kua {
     this.subtask = this.camelize(optimist.argv._[1] || optimist.argv._[0] || '')
     this.uuid = uuid
     this.extend = extend
+    this.fp = fp
     for (const key of Object.keys(optimist.argv)) {
       this.option[this.camelize(key)] = optimist.argv[key]
     }
@@ -32,9 +34,8 @@ class Kua {
       const log = fs.createWriteStream(this.option.logfile, { flags: 'a+' })
       process.stdout.write = process.stderr.write = log.write.bind(log)
       process.on('uncaughtException', (error) => {
-        /* eslint-disable no-console */
-        console.error((error && error.stack) ? error.stack : error)
-        /* eslint-enable no-console */
+        process.stderr.write((error && error.stack) ? error.stack : error)
+        process.stderr.write('\n')
       })
     }
     if (fs.existsSync(`${this.root}/config.yml`)) {
@@ -44,6 +45,12 @@ class Kua {
       extend(this.config, this.loadYaml(`${this.root}/host.yml`))
     }
     this.addNodePath(`${this.root}/lib`)
+  }
+
+  leftAlign(string = '') {
+    const lines = fp.filter(fp.identity, string.split('\n'))
+    const indent = /^(\s+)/.exec(lines[0])[1].length
+    return fp.filter(fp.identity, fp.map(l => l.substr(indent), lines)).join('\n')
   }
 
   camelize(string) {
