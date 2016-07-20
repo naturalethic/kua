@@ -12,10 +12,6 @@ import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
 
-function camelize(string) {
-  return string.trim().replace(/(\-|_|\s)+(.)?/g, (m, s, c) => (c ? c.toUpperCase() : ''))
-}
-
 class Kua {
   initialize(root) {
     if (['start', 'stop'].includes(optimist.argv._[0])) {
@@ -25,11 +21,12 @@ class Kua {
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
     this.option = {}
     this.glob = glob.sync
-    this.task = camelize(optimist.argv._[0] || '')
-    this.subtask = camelize(optimist.argv._[1] || optimist.argv._[0] || '')
+    this.task = this.camelize(optimist.argv._[0] || '')
+    this.subtask = this.camelize(optimist.argv._[1] || optimist.argv._[0] || '')
     this.uuid = uuid
+    this.extend = extend
     for (const key of Object.keys(optimist.argv)) {
-      this.option[camelize(key)] = optimist.argv[key]
+      this.option[this.camelize(key)] = optimist.argv[key]
     }
     if (this.option.logfile) {
       const log = fs.createWriteStream(this.option.logfile, { flags: 'a+' })
@@ -41,12 +38,25 @@ class Kua {
       })
     }
     if (fs.existsSync(`${this.root}/config.yml`)) {
-      extend(this.config, yaml.load(fs.readFileSync(`${this.root}/config.yml`, 'utf8')))
+      extend(this.config, this.loadYaml(`${this.root}/config.yml`))
     }
     if (fs.existsSync(`${this.root}/host.yml`)) {
-      extend(this.config, yaml.load(fs.readFileSync(`${this.root}/host.yml`, 'utf8')))
+      extend(this.config, this.loadYaml(`${this.root}/host.yml`))
     }
     this.addNodePath(`${this.root}/lib`)
+  }
+
+  camelize(string) {
+    return string.trim().replace(/(\-|_|\s)+(.)?/g, (m, s, c) => (c ? c.toUpperCase() : ''))
+  }
+
+  dasherize(string) {
+    return string.trim().replace(/[_\s]+/g, '-').replace(/([A-Z])/g, '-$1')
+                 .replace(/-+/g, '-').toLowerCase()
+  }
+
+  loadYaml(filePath) {
+    return yaml.load(fs.readFileSync(filePath, 'utf8'))
   }
 
   addNodePath(nodePath) {
@@ -77,7 +87,14 @@ class Kua {
   }
 
   color(xterm256Color, text) {
-    return (this.config.color && `\x1b[38;5;${xterm256Color}m${text}\x1b[0m`) || text
+    if (text) {
+      return (this.config.color && `\x1b[38;5;${xterm256Color}m${text}\x1b[0m`) || text
+    }
+    return (this.config.color && `\x1b[38;5;${xterm256Color}m`) || ''
+  }
+
+  colorend() {
+    return '\x1b[0m'
   }
 
   loadModule(modulePath) {
