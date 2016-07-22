@@ -24,6 +24,7 @@ class Kua {
     this.glob = glob.sync
     this.task = this.camelize(optimist.argv._[0] || '')
     this.subtask = this.camelize(optimist.argv._[1] || optimist.argv._[0] || '')
+    this.args = optimist.argv._
     this.uuid = uuid
     this.extend = extend
     this.fp = fp
