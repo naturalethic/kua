@@ -5,13 +5,15 @@ import * as babel from 'babel-core'
 import * as optimist from 'optimist'
 import * as chokidar from 'chokidar'
 import * as glob from 'glob'
-import * as uuid from 'uuid'
 import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
 import * as fp from 'ramda'
 import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
+import uuid from 'uuid'
+
+global.Promise = Promise
 
 class Kua {
   initialize(root) {
@@ -28,6 +30,11 @@ class Kua {
     this.uuid = uuid
     this.extend = extend
     this.fp = fp
+    if (this.subtask == this.task) {
+      this.params = this.args.slice(1)
+    } else {
+      this.params = this.args.slice(2)
+    }
     for (const key of Object.keys(optimist.argv)) {
       this.option[this.camelize(key)] = optimist.argv[key]
     }
@@ -114,6 +121,10 @@ class Kua {
     module._compile(babel.transform(fs.readFileSync(modulePath, 'utf8'), {
     /* eslint-enable no-underscore-dangle */
       presets: ['es2015'],
+      plugins: [
+        'syntax-async-functions',
+        'fast-async',
+      ]
     }).code, modulePath)
     process.chdir(originalDir)
     return module.exports
@@ -149,14 +160,23 @@ class Kua {
   run(root) {
     this.initialize(root)
     process.chdir(this.root)
+    if (!this.task) {
+      return process.stdout.write('No task specified.\n')
+    }
+    if (!fs.existsSync(`${this.root}/task/${this.task}.js`)) {
+      return process.stdout.write('Task does not exist.\n')
+    }
     const module = this.loadModule(`${this.root}/task/${this.task}.js`)
+    if (!module[this.subtask]) {
+      return process.stdout.write('Subtask does not exist.\n')
+    }
     const task = module[this.subtask]
     if (this.daemonizeAction) {
       this.daemonize()
     } else if (this.option.watch) {
       this.watch(module.watch)
     } else {
-      task()
+      task(...this.params)
     }
   }
 }
