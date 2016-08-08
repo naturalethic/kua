@@ -1,6 +1,6 @@
 {
   "name": "kua",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -73,7 +73,7 @@
     "chokidar": "^1.6.0",
     "daemonize2": "^0.4.2",
     "deep-extend": "^0.4.1",
-    "fast-async": "^6.0.31",
+    "fast-async": "github:matatbread/fast-async",
     "glob": "^7.0.5",
     "js-yaml": "^3.6.1",
     "optimist": "^0.6.1",
