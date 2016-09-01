@@ -1,7 +1,7 @@
 import * as childProcess from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as babel from 'babel-core'
+
 import * as optimist from 'optimist'
 import * as chokidar from 'chokidar'
 import * as glob from 'glob'
@@ -9,10 +9,11 @@ import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
 import * as fp from 'ramda'
 import * as op from 'object-path'
-import Promise from 'bluebird'
-import Module from 'module'
 import extend from 'deep-extend'
 import uuid from 'uuid'
+import Promise from 'bluebird'
+import 'babel-polyfill'
+import 'babel-register'
 
 global.Promise = Promise
 
@@ -49,7 +50,6 @@ class Kua {
     if (fs.existsSync(`${this.root}/host.yml`)) {
       extend(this.config, this.loadYaml(`${this.root}/host.yml`))
     }
-    this.addNodePath(`${this.root}/lib`)
   }
 
   leftAlign(string = '') {
@@ -69,10 +69,6 @@ class Kua {
 
   loadYaml(filePath) {
     return yaml.load(fs.readFileSync(filePath, 'utf8'))
-  }
-
-  addNodePath(nodePath) {
-    Module.globalPaths.push(nodePath)
   }
 
   exec(command) {
@@ -109,22 +105,12 @@ class Kua {
     return '\x1b[0m'
   }
 
+  compileLibs() {
+
+  }
+
   loadModule(modulePath) {
-    const originalDir = process.cwd()
-    process.chdir(`${__dirname}/..`)
-    const module = new Module()
-    module.paths = [`${this.root}/node_modules`, `${this.root}/lib`]
-    /* eslint-disable no-underscore-dangle */
-    module._compile(babel.transform(fs.readFileSync(modulePath, 'utf8'), {
-    /* eslint-enable no-underscore-dangle */
-      presets: ['es2015'],
-      plugins: [
-        'syntax-async-functions',
-        'fast-async',
-      ],
-    }).code, modulePath)
-    process.chdir(originalDir)
-    return module.exports
+    return require(modulePath) // eslint-disable-line global-require
   }
 
   watch(watch) {
@@ -165,14 +151,12 @@ class Kua {
       const module = this.loadModule(`${this.root}/task/${this.task}.js`)
       if (!module.default) {
         process.stdout.write('Task module does not export default.\n')
+      } else if (this.daemonizeAction) {
+        this.daemonize()
+      } else if (this.config.watch) {
+        this.watch(module.watch)
       } else {
-        if (this.daemonizeAction) {
-          this.daemonize()
-        } else if (this.config.watch) {
-          this.watch(module.watch)
-        } else {
-          module.default(...this.params)
-        }
+        module.default(...this.params)
       }
     }
   }
