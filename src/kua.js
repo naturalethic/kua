@@ -8,6 +8,7 @@ import * as glob from 'glob'
 import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
 import * as fp from 'ramda'
+import * as op from 'object-path'
 import Promise from 'bluebird'
 import Module from 'module'
 import extend from 'deep-extend'
@@ -22,24 +23,20 @@ class Kua {
     }
     this.config = { color: true }
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
-    this.option = {}
     this.glob = glob.sync
     this.task = this.camelize(optimist.argv._[0] || '')
-    this.subtask = this.camelize(optimist.argv._[1] || optimist.argv._[0] || '')
     this.args = optimist.argv._
     this.uuid = uuid
     this.extend = extend
     this.fp = fp
-    if (this.subtask == this.task) {
-      this.params = this.args.slice(1)
-    } else {
-      this.params = this.args.slice(2)
-    }
+    this.params = this.args.slice(1)
     for (const key of Object.keys(optimist.argv)) {
-      this.option[this.camelize(key)] = optimist.argv[key]
+      if (key !== '_' && key[0] !== '$') {
+        op.set(this.config, this.camelize(key).replace(/:/g, '.'), optimist.argv[key])
+      }
     }
-    if (this.option.logfile) {
-      const log = fs.createWriteStream(this.option.logfile, { flags: 'a+' })
+    if (this.config.log) {
+      const log = fs.createWriteStream(this.config.log, { flags: 'a+' })
       process.stdout.write = process.stderr.write = log.write.bind(log)
       process.on('uncaughtException', (error) => {
         process.stderr.write((error && error.stack) ? error.stack : error)
@@ -124,7 +121,7 @@ class Kua {
       plugins: [
         'syntax-async-functions',
         'fast-async',
-      ]
+      ],
     }).code, modulePath)
     process.chdir(originalDir)
     return module.exports
@@ -150,7 +147,7 @@ class Kua {
       main: optimist.argv.$0,
       pidfile: `/tmp/kua-${path.basename(this.root)}-${this.task}-${this.subtask}.pid`,
       name: ['kua'].concat(optimist.argv._).join(' '),
-      argv: process.argv.slice(3).concat(['--logfile', 'kua.log']),
+      argv: process.argv.slice(3).concat(['--log', 'kua.log']),
       cwd: this.root,
     })
     daemon.on('error', (e) => this.error(e))
@@ -161,22 +158,22 @@ class Kua {
     this.initialize(root)
     process.chdir(this.root)
     if (!this.task) {
-      return process.stdout.write('No task specified.\n')
-    }
-    if (!fs.existsSync(`${this.root}/task/${this.task}.js`)) {
-      return process.stdout.write('Task does not exist.\n')
-    }
-    const module = this.loadModule(`${this.root}/task/${this.task}.js`)
-    if (!module[this.subtask]) {
-      return process.stdout.write('Subtask does not exist.\n')
-    }
-    const task = module[this.subtask]
-    if (this.daemonizeAction) {
-      this.daemonize()
-    } else if (this.option.watch) {
-      this.watch(module.watch)
+      process.stdout.write('No task specified.\n')
+    } else if (!fs.existsSync(`${this.root}/task/${this.task}.js`)) {
+      process.stdout.write('Task does not exist.\n')
     } else {
-      task(...this.params)
+      const module = this.loadModule(`${this.root}/task/${this.task}.js`)
+      if (!module.default) {
+        process.stdout.write('Task module does not export default.\n')
+      } else {
+        if (this.daemonizeAction) {
+          this.daemonize()
+        } else if (this.config.watch) {
+          this.watch(module.watch)
+        } else {
+          module.default(...this.params)
+        }
+      }
     }
   }
 }
