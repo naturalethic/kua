@@ -54,8 +54,15 @@ class Kua {
 
   leftAlign(string = '') {
     const lines = fp.filter(fp.identity, string.split('\n'))
-    const indent = /^(\s+)/.exec(lines[0])[1].length
+    const indent = /^(\s*)/.exec(lines[0])[1].length
     return fp.filter(fp.identity, fp.map(l => l.substr(indent), lines)).join('\n')
+  }
+
+  print(...args) {
+    for (const arg of args) {
+      process.stdout.write(arg)
+    }
+    process.stdout.write('\n')
   }
 
   camelize(string) {
