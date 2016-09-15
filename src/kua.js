@@ -125,7 +125,7 @@ class Kua {
       [optimist.argv.$0].concat(process.argv.slice(2)).join(' ').replace(' --watch', '')
     this.child = this.spawnAsync(command)
     chokidar.watch(watch || [], { persistent: true, ignoreInitial: true }).on('all', (_, p) => {
-      this.info(`Change detected in ${p}...`)
+      this.print(`Change detected in ${p}...`)
       this.child.kill()
       this.child = this.spawnAsync(command)
     })
@@ -161,6 +161,7 @@ class Kua {
       } else if (this.daemonizeAction) {
         this.daemonize()
       } else if (this.config.watch) {
+        this.print('Watching for changes...')
         this.watch(module.watch)
       } else {
         module.default(...this.params)
