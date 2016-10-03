@@ -74,6 +74,10 @@ class Kua {
                  .replace(/-+/g, '-').toLowerCase()
   }
 
+  capitalize(string) {
+    return `${string[0].toUpperCase()}${string.substr(1)}`
+  }
+
   loadYaml(filePath) {
     return yaml.load(fs.readFileSync(filePath, 'utf8'))
   }
