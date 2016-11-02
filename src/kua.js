@@ -9,6 +9,7 @@ import * as daemonize from 'daemonize2'
 import * as yaml from 'js-yaml'
 import * as fp from 'ramda'
 import * as op from 'object-path'
+import inflection from 'inflection'
 import extend from 'deep-extend'
 import uuid from 'uuid'
 import Promise from 'bluebird'
@@ -78,6 +79,14 @@ class Kua {
     return `${string[0].toUpperCase()}${string.substr(1)}`
   }
 
+  pluralize(string) {
+    return inflection.pluralize(string)
+  }
+
+  singularize(string) {
+    return inflection.singularize(string)
+  }
+
   loadYaml(filePath) {
     return yaml.load(fs.readFileSync(filePath, 'utf8'))
   }
@@ -117,11 +126,10 @@ class Kua {
   }
 
   compileLibs() {
-
   }
 
   loadModule(modulePath) {
-    return require(modulePath) // eslint-disable-line global-require
+    return require(modulePath)
   }
 
   watch(watch) {
@@ -147,7 +155,7 @@ class Kua {
       argv: process.argv.slice(3).concat(['--log', 'kua.log']),
       cwd: this.root,
     })
-    daemon.on('error', (e) => this.error(e))
+    daemon.on('error', e => this.error(e))
     daemon[this.daemonizeAction]()
   }
 

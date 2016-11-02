@@ -66,7 +66,10 @@
         }
       ],
       "import/prefer-default-export": "off",
-      "generator-star-spacing": "off"
+      "import/no-dynamic-require": "off",
+      "global-require": "off",
+      "generator-star-spacing": "off",
+      "class-methods-use-this": "off"
     }
   },
   "devDependencies": {
@@ -91,6 +94,7 @@
     "daemonize2": "^0.4.2",
     "deep-extend": "^0.4.1",
     "glob": "^7.1.0",
+    "inflection": "^1.10.0",
     "js-yaml": "^3.6.1",
     "object-path": "^0.11.2",
     "optimist": "^0.6.1",
