@@ -1,14 +1,14 @@
-import * as childProcess from 'child_process'
-import * as fs from 'fs'
-import * as path from 'path'
+import childProcess from 'child_process'
+import fs from 'fs'
+import path from 'path'
 
-import * as optimist from 'optimist'
-import * as chokidar from 'chokidar'
-import * as glob from 'glob'
-import * as daemonize from 'daemonize2'
-import * as yaml from 'js-yaml'
-import * as fp from 'ramda'
-import * as op from 'object-path'
+import optimist from 'optimist'
+import chokidar from 'chokidar'
+import glob from 'glob'
+import daemonize from 'daemonize2'
+import yaml from 'js-yaml'
+import fp from 'ramda'
+import op from 'object-path'
 import inflection from 'inflection'
 import extend from 'deep-extend'
 import uuid from 'uuid'
@@ -53,6 +53,11 @@ class Kua {
     }
   }
 
+  s(strings, ...values) {
+    return this.leftAlign(strings.reduce((memo, s, i) =>
+      `${memo}${s}${values[i] === undefined ? '' : values[i]}`, ''))
+  }
+
   leftAlign(string = '') {
     const lines = fp.filter(fp.identity, string.split('\n'))
     const indent = /^(\s*)/.exec(lines[0])[1].length
@@ -67,7 +72,7 @@ class Kua {
   }
 
   camelize(string) {
-    return string.trim().replace(/(\-|_|\s)+(.)?/g, (m, s, c) => (c ? c.toUpperCase() : ''))
+    return string.trim().replace(/(-|_|\s)+(.)?/g, (m, s, c) => (c ? c.toUpperCase() : ''))
   }
 
   dasherize(string) {
