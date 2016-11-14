@@ -65,10 +65,11 @@ class Kua {
   }
 
   print(...args) {
-    for (const arg of args) {
-      process.stdout.write(arg)
-    }
-    process.stdout.write('\n')
+    console.log(...args) // eslint-disable-line no-console
+  }
+
+  inspect(obj) {
+    console.dir(obj, { colors: true, depth: null }) // eslint-disable-line no-console
   }
 
   camelize(string) {
