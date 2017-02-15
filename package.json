@@ -29,80 +29,73 @@
   "author": "",
   "license": "ISC",
   "eslintConfig": {
-    "env": {
-      "jest": true
-    },
     "parser": "babel-eslint",
-    "parserOptions": {
-      "sourceType": "module",
-      "allowImportExportEverywhere": false
-    },
     "extends": [
-      "airbnb",
+      "standard",
+      "plugin:react/recommended",
       "plugin:import/errors",
       "plugin:import/warnings"
     ],
+    "env": {
+      "jest": true
+    },
     "rules": {
-      "semi": [
+      "space-before-function-paren": "off",
+      "comma-dangle": [
+        2,
+        "always-multiline"
+      ],
+      "object-curly-spacing": [
+        2,
+        "always"
+      ],
+      "array-bracket-spacing": [
         2,
         "never"
       ],
-      "no-multiple-empty-lines": [
+      "import/no-unresolved": [
         2,
         {
-          "max": 1,
-          "maxBOF": 0,
-          "maxEOF": 1
+          "ignore": [
+            "^config$"
+          ]
         }
       ],
-      "newline-per-chained-call": "off",
-      "default-case": "off",
-      "new-cap": "off",
-      "arrow-body-style": "off",
       "import/order": [
-        "error",
+        2,
         {
           "newlines-between": "always"
         }
       ],
-      "import/prefer-default-export": "off",
-      "import/no-dynamic-require": "off",
-      "import/no-named-default": "off",
-      "global-require": "off",
-      "generator-star-spacing": "off",
-      "class-methods-use-this": "off",
-      "no-restricted-syntax": [
-        "error",
-        "ForInStatement",
-        "LabeledStatement",
-        "WithStatement"
+      "jsx-quotes": [
+        2,
+        "prefer-double"
       ]
     }
   },
-  "devDependencies": {
+  "dependencies": {
     "babel-cli": "^6.16.0",
     "babel-eslint": "^7.0.0",
-    "chokidar-cli": "^1.2.0",
-    "eslint": "^3.7.0",
-    "eslint-config-airbnb": "^12.0.0",
-    "eslint-plugin-import": "^2.0.0",
-    "eslint-plugin-jsx-a11y": "^2.2.2",
-    "eslint-plugin-react": "^6.3.0",
-    "jest-cli": "^16.0.0",
-    "npm-check-updates": "^2.8.2"
-  },
-  "dependencies": {
     "babel-polyfill": "^6.16.0",
     "babel-preset-latest": "^6.16.0",
     "babel-preset-stage-2": "^6.17.0",
     "babel-register": "^6.16.3",
     "bluebird": "^3.4.6",
     "chokidar": "^1.6.0",
+    "chokidar-cli": "^1.2.0",
     "daemonize2": "^0.4.2",
     "deep-extend": "^0.4.1",
+    "eslint": "^3.7.0",
+    "eslint-config-standard": "^6.2.1",
+    "eslint-plugin-import": "^2.0.0",
+    "eslint-plugin-promise": "^3.4.1",
+    "eslint-plugin-react": "^6.3.0",
+    "eslint-plugin-standard": "^2.0.1",
     "glob": "^7.1.0",
     "inflection": "^1.10.0",
+    "jest-cli": "^16.0.0",
     "js-yaml": "^3.6.1",
+    "npm-check-updates": "^2.8.2",
     "object-path": "^0.11.2",
     "optimist": "^0.6.1",
     "ramda": "^0.22.1",

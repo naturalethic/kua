@@ -20,6 +20,13 @@ global.Promise = Promise
 
 class Kua {
   initialize(root) {
+    if (!fs.existsSync('.babelrc')) {
+      console.log('Creating .babelrc and .eslintrc.json')
+      console.log("You'll want to make sure eslint is installed")
+      const p = require(path.join(__dirname, '/../package.json'))
+      fs.writeFileSync('.babelrc', JSON.stringify(p.babel, null, 2))
+      fs.writeFileSync('.eslintrc.json', JSON.stringify(p.eslintConfig, null, 2))
+    }
     if (['start', 'stop'].includes(optimist.argv._[0])) {
       this.daemonizeAction = optimist.argv._.shift()
     }
