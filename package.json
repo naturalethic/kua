@@ -1,6 +1,6 @@
 {
   "name": "kua",
-  "version": "1.0.17",
+  "version": "1.0.19",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,8 +8,7 @@
     "test": "jest",
     "test:watch": "npm run test -- --watch",
     "build": "babel src --out-dir lib",
-    "build:watch": "chokidar 'src/**/*.js' -c 'npm run build'",
-    "upgrade": "ncu -a"
+    "build:watch": "chokidar 'src/**/*.js' -c 'npm run build'"
   },
   "directories": {
     "bin": "./bin"
@@ -21,7 +20,7 @@
   ],
   "babel": {
     "presets": [
-      "latest",
+      "env",
       "stage-2"
     ]
   },
@@ -77,7 +76,7 @@
     "babel-cli": "^6.16.0",
     "babel-eslint": "^7.0.0",
     "babel-polyfill": "^6.16.0",
-    "babel-preset-latest": "^6.16.0",
+    "babel-preset-env": "^1.2.1",
     "babel-preset-stage-2": "^6.17.0",
     "babel-register": "^6.16.3",
     "bluebird": "^3.4.6",
@@ -86,19 +85,18 @@
     "daemonize2": "^0.4.2",
     "deep-extend": "^0.4.1",
     "eslint": "^3.7.0",
-    "eslint-config-standard": "^6.2.1",
+    "eslint-config-standard": "^7.0.1",
     "eslint-plugin-import": "^2.0.0",
     "eslint-plugin-promise": "^3.4.1",
     "eslint-plugin-react": "^6.3.0",
     "eslint-plugin-standard": "^2.0.1",
     "glob": "^7.1.0",
     "inflection": "^1.10.0",
-    "jest-cli": "^16.0.0",
+    "jest-cli": "^19.0.2",
     "js-yaml": "^3.6.1",
-    "npm-check-updates": "^2.8.2",
     "object-path": "^0.11.2",
     "optimist": "^0.6.1",
-    "ramda": "^0.22.1",
-    "uuid": "^2.0.3"
+    "ramda": "^0.23.0",
+    "uuid": "^3.0.1"
   }
 }
