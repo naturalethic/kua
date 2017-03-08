@@ -55,6 +55,9 @@ class Kua {
     if (fs.existsSync(`${this.root}/config.yml`)) {
       extend(this.config, this.loadYaml(`${this.root}/config.yml`))
     }
+    if (fs.existsSync(`${this.root}/secret.yml`)) {
+      extend(this.config, this.loadYaml(`${this.root}/secret.yml`))
+    }
     if (this.config.host) {
       if (fs.existsSync(`${this.root}/${this.config.host}.yml`)) {
         extend(this.config, this.loadYaml(`${this.root}/${this.config.host}.yml`))
