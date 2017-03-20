@@ -20,18 +20,22 @@ global.Promise = Promise
 
 class Kua {
   initialize(root) {
-    if (!fs.existsSync('.babelrc')) {
-      console.log('Creating .babelrc and .eslintrc.json')
-      console.log("You'll want to make sure eslint is installed")
-      const p = require(path.join(__dirname, '/../package.json'))
-      fs.writeFileSync('.babelrc', JSON.stringify(p.babel, null, 2))
-      fs.writeFileSync('.eslintrc.json', JSON.stringify(p.eslintConfig, null, 2))
+    this.config = { color: true }
+    this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
+    const kuaPackage = require(path.join(__dirname, '..', 'package.json'))
+    const projectPackage = require(path.join(this.root, 'package.json'))
+    if (!projectPackage.babel && !fs.existsSync('.babelrc')) {
+      console.log('Creating .babelrc')
+      fs.writeFileSync('.babelrc', JSON.stringify(kuaPackage.babel, null, 2))
+    }
+    if (!projectPackage.eslintConfig &&
+        !(fs.existsSync('.eslint.js') || !fs.existsSync('.eslint.json'))) {
+      console.log('Creating .eslintrc.json')
+      fs.writeFileSync('.eslintrc.json', JSON.stringify(kuaPackage.eslintConfig, null, 2))
     }
     if (['start', 'stop'].includes(optimist.argv._[0])) {
       this.daemonizeAction = optimist.argv._.shift()
     }
-    this.config = { color: true }
-    this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
     this.glob = glob.sync
     this.task = this.camelize(optimist.argv._[0] || '')
     this.args = optimist.argv._
