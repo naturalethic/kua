@@ -176,7 +176,7 @@ class Kua {
 
   daemonize() {
     const daemon = daemonize.setup({
-      main: optimist.argv.$0,
+      main: `${this.root}/node_modules/kua/bin/kua`,
       pidfile: `/tmp/kua-${path.basename(this.root)}-${this.task}-${this.subtask}.pid`,
       name: ['kua'].concat(optimist.argv._).join(' '),
       argv: process.argv.slice(3).concat(['--log', 'kua.log']),
