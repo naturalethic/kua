@@ -1,6 +1,7 @@
 import childProcess from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
 import optimist from 'optimist'
 import chokidar from 'chokidar'
@@ -72,6 +73,19 @@ class Kua {
     } else if (fs.existsSync(`${this.root}/host.yml`)) {
       extend(this.config, this.loadYaml(`${this.root}/host.yml`))
     }
+    if (this.config.dotfile) {
+      this.dotfile = `${os.homedir()}/.${this.config.dotfile}`
+      this.config.dotfile = {}
+      if (fs.existsSync(this.dotfile)) {
+        extend(this.config.dotfile, this.loadYaml(this.dotfile))
+      }
+    } else {
+      this.config.dotfile = {}
+    }
+  }
+
+  saveDotfile() {
+    this.saveYaml(this.dotfile, this.config.dotfile)
   }
 
   s(strings, ...values) {
@@ -116,6 +130,10 @@ class Kua {
 
   loadYaml(filePath) {
     return yaml.load(fs.readFileSync(filePath, 'utf8'))
+  }
+
+  saveYaml(filePath, object) {
+    fs.writeFileSync(filePath, yaml.dump(object))
   }
 
   exec(command) {
