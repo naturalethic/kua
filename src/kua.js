@@ -208,9 +208,11 @@ class Kua {
     this.initialize(root)
     process.chdir(this.root)
     if (!this.task) {
-      process.stdout.write('No task specified.\n')
-    } else if (!fs.existsSync(`${this.root}/task/${this.task}.js`)) {
-      process.stdout.write('Task does not exist.\n')
+      this.task = 'index'
+    }
+    const taskPath = `${this.root}/task/${this.task}.js`
+    if (!fs.existsSync(taskPath)) {
+      process.stdout.write(`Task file not exist: '${taskPath}'\n`)
     } else {
       const module = this.loadModule(`${this.root}/task/${this.task}.js`)
       if (!module.default) {
