@@ -23,16 +23,17 @@ class Kua {
   initialize(root) {
     this.config = { color: true }
     this.root = fs.realpathSync(root || optimist.argv.root || process.cwd())
+    const babelPath = path.join(this.root, '.babelrc')
+    const eslintPaths = [path.join(this.root, '.eslint.js'), path.join(this.root, '.eslint.json')]
     const kuaPackage = require(path.join(__dirname, '..', 'package.json'))
     const projectPackage = require(path.join(this.root, 'package.json'))
-    if (!projectPackage.babel && !fs.existsSync('.babelrc')) {
+    if (!projectPackage.babel && !fs.existsSync(babelPath)) {
       console.log('Creating .babelrc')
-      fs.writeFileSync('.babelrc', JSON.stringify(kuaPackage.babel, null, 2))
+      fs.writeFileSync(babelPath, JSON.stringify(kuaPackage.babel, null, 2))
     }
-    if (!projectPackage.eslintConfig &&
-        !(fs.existsSync('.eslint.js') || !fs.existsSync('.eslint.json'))) {
+    if (!projectPackage.eslintConfig && !(fs.existsSync(eslintPaths[0]) || !fs.existsSync(eslintPaths[1]))) {
       console.log('Creating .eslintrc.json')
-      fs.writeFileSync('.eslintrc.json', JSON.stringify(kuaPackage.eslintConfig, null, 2))
+      fs.writeFileSync(eslintPaths[1], JSON.stringify(kuaPackage.eslintConfig, null, 2))
     }
     if (['start', 'stop'].includes(optimist.argv._[0])) {
       this.daemonizeAction = optimist.argv._.shift()
